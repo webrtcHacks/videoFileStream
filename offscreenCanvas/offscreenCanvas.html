@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stream from Offscreen Canvas</title>
+    <style>
+        canvas {
+            border: 1px solid blue;
+        }
+
+        video {
+            border: 1px solid red;
+        }
+
+        div {
+            min-width: 400px;
+            min-height: 150px;
+        }
+
+        div#output {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+<div id="output">
+    <div>
+        <h3>Source Canvas</h3>
+        <canvas id="clockCanvas" width="400" height="100"></canvas>
+    </div>
+    <div>
+        <h3>MediaStream output</h3>
+        <video width="400" height="100" controls muted autoplay></video>
+    </div>
+</div>
+<br>
+<button>Hide source</button>
+<!-- Inline Worker -->
+<script id="worker" type="javascript/worker">
+    onmessage = function(e) {
+    const offscreenCanvas = e.data.canvas;
+    const ctx = offscreenCanvas.getContext('2d');
+
+    function updateCanvas() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 2 });
+
+        ctx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+        ctx.font = '40px Arial';
+        ctx.fillText(timeString, 70, 70);
+
+        offscreenCanvas.convertToBlob().then(blob => {
+            createImageBitmap(blob).then(bitmap => {
+                postMessage(bitmap, [bitmap]);
+            });
+        });
+    }
+
+    setInterval(updateCanvas, 100);
+};
+</script>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const canvas = document.getElementById("clockCanvas");
+        const offscreen = canvas.transferControlToOffscreen();
+        const video = document.querySelector('video');
+
+        const stream = canvas.captureStream();
+        window.stream = stream;
+        console.log(stream.getVideoTracks()[0]);
+        video.srcObject = stream;
+
+        // const worker = new Worker('worker.js');
+        // inline worker
+        const blob = new Blob([document.querySelector("#worker").textContent], {
+            type: "text/javascript"
+        });
+        const worker = new Worker(window.URL.createObjectURL(blob));
+
+        worker.postMessage({canvas: offscreen}, [offscreen]);
+
+
+        const button = document.querySelector('button');
+        button.onclick = () => {
+            canvas.hidden = !canvas.hidden;
+            button.innerText = button.innerText === "Hide source" ? "Hide source" : "Unhide source";
+        }
+    });
+</script>
+</body>
+</html>
