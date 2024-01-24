@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WebCodecs Stream</title>
+    <style>
+        body {
+            background-color: #333;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+<button hidden>Start</button>
+<br/>
+<video autoplay playsinline controls></video>
+<script type="module">
+    const startButton = document.querySelector("button");
+    // const file = `../bbb_video_avc_frag.mp4`;
+    const file = '../BigBuckBunny_360p30.mp4';
+    const video = document.querySelector('video');
+
+    const videoTrackGenerator = new MediaStreamTrackGenerator({ kind: 'video' });
+    const audioTrackGenerator = new MediaStreamTrackGenerator({ kind: 'audio' });
+
+    const stream = new MediaStream([videoTrackGenerator, audioTrackGenerator]);
+    video.srcObject = stream;
+
+    function start(){
+        const worker = new Worker("./worker.js");
+
+        const videoWriter = videoTrackGenerator.writable;
+        const audioWriter = audioTrackGenerator.writable;
+
+        worker.postMessage({file, videoWriter}, [videoWriter]);
+    }
+
+    startButton.onclick = ()=> start();
+    start();
+
+</script>
+</body>
+</html>
