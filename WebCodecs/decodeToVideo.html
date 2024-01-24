@@ -11,7 +11,7 @@
     </style>
 </head>
 <body>
-<button hidden>Start</button>
+<button>Start</button>
 <br/>
 <video autoplay playsinline controls></video>
 <script type="module">
@@ -32,11 +32,10 @@
         const videoWriter = videoTrackGenerator.writable;
         const audioWriter = audioTrackGenerator.writable;
 
-        worker.postMessage({file, videoWriter}, [videoWriter]);
+        worker.postMessage({file, videoWriter, audioWriter}, [videoWriter, audioWriter]);
     }
 
     startButton.onclick = ()=> start();
-    start();
 
 </script>
 </body>
