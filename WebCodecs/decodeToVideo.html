@@ -20,6 +20,7 @@
     const fileButton = document.querySelector("input");
     const video = document.querySelector('video');
 
+    // Assumes file has both audio and video tracks
     const videoTrackGenerator = new MediaStreamTrackGenerator({ kind: 'video' });
     const audioTrackGenerator = new MediaStreamTrackGenerator({ kind: 'audio' });
 

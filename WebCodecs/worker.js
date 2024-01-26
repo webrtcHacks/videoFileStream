@@ -154,14 +154,8 @@ async function start(data) {
     }
 
     // Wait until we have a queue of both audio and video samples before rendering
-    // ToDo: Assumes there is both audio and video tracks otherwise it will never play
     function render() {
-        if(rendering){
-            // console.log("already rendering");
-            return;
-        }
-        // start rendering once there is a queue of samples
-        else if (videoSamples.length > 100 && audioSamples.length > 100) {
+        if (!rendering && videoSamples.length > 100 && audioSamples.length > 100) {
             console.log("starting rendering");
             rendering = true;
             renderAudioLoop();  // this is about ~1 second behind the video
