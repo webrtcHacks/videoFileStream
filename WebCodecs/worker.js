@@ -1,126 +1,5 @@
 importScripts("demuxer_mp4.js");
 
-
-class DecodeFileToStream {
-
-    samples = [];
-
-    constructor(file, videoWriter) {
-        this.file = file;
-        this.kind = "video";
-        this.writer = videoWriter;
-        this.offset = 0;
-        this.rendering = false;
-
-        // mp4box setup
-        this.fs = MP4Box.createFile();
-
-        // handles the initial buffer load
-        this.fs.write = chunk => {
-            // console.log(`wrote chunk with length ${chunk.byteLength}`)
-
-            // MP4Box.js requires buffers to be Uint8Array, but we have a ArrayBuffers.
-            const buffer = new ArrayBuffer(chunk.byteLength);
-            new Uint8Array(buffer).set(chunk);
-
-            // Inform MP4Box where in the file this chunk is from.
-            buffer.fileStart = this.offset;
-            this.offset += buffer.byteLength;
-
-            // Append chunk.
-            this.fs.appendBuffer(buffer);
-        }
-        this.fs.close = () => this.fs.flush();
-        this.fs.onError = e => console.error(e);
-        this.fs.onReady = info => {
-            console.log("loaded track(s)", info);
-            const trackInfo = info.videoTracks[0];
-            const track = this.fs.getTrackById(trackInfo.id);
-            const config = {
-                codec: trackInfo.codec.startsWith('vp08') ? 'vp8' : trackInfo.codec,
-                codedHeight: trackInfo.video.height,
-                codedWidth: trackInfo.video.width,
-                description: getDescription(track)
-            };
-
-            console.log("codec config", config);
-            this.decoder.configure(config);
-            this.fs.setExtractionOptions(trackInfo.id);
-
-        }
-        this.fs.onSamples = async (trackId, ref, samples) => {
-            console.log(`loaded ${samples.length} samples`);
-            this.samples.push(...samples);
-            if (!this.rendering) {
-                this.rendering = true;
-                this.#renderLoop();
-            }
-        }
-
-        this.fs.start();
-
-        this.fileLoader(file)
-            .then(() => console.log(`loaded file ${file}`))
-            .catch(e => console.error(e));
-    }
-
-    async fileLoader(fileUrl) {
-        // load the file into mp4box
-        const file = await fetch(fileUrl);
-        await file.body.pipeTo(new WritableStream(this.fs, {highWaterMark: 2}));
-    }
-
-    // decoder setup
-    decoder = new VideoDecoder({
-        output: frame => this.writer.write(frame),
-        error: e => console.error(e)
-    });
-
-    /**
-     * Decodes a mp4bbox sample by turning it into a EncodedVideoChunk and passing it to the decoder
-     * @param sample - mp4box sample
-     * @returns number - the duration of the sample in ms
-     */
-    #decodeSample(sample) {
-        const duration = 1e6 * sample.duration / sample.timescale;
-        const chunk = new EncodedVideoChunk({
-            type: sample.is_sync ? "key" : "delta",
-            timestamp: 1e6 * sample.cts / sample.timescale,
-            duration: duration,
-            data: sample.data
-        });
-        this.decoder.decode(chunk);
-        return duration / 1000;
-        // return new Promise(resolve => setTimeout(resolve, duration));
-    }
-
-    #renderLoop() {
-        if (this.samples.length > 0) {
-            const duration = this.#decodeSample(this.samples.shift());
-            setTimeout(this.#renderLoop, duration);
-        } else {
-            console.log("done rendering");
-            this.rendering = false;
-        }
-    }
-
-    // Get the appropriate `description` for a specific track. Assumes that the
-    // track is H.264, H.265, VP8, VP9, or AV1.
-    getDescription(track) {
-        for (const entry of track.mdia.minf.stbl.stsd.entries) {
-            const box = entry.avcC || entry.hvcC || entry.vpcC || entry.av1C;
-            if (box) {
-                const stream = new DataStream(undefined, 0, DataStream.BIG_ENDIAN);
-                box.write(stream);
-                return new Uint8Array(stream.buffer, 8);  // Remove the box header.
-            }
-        }
-        throw new Error("avcC, hvcC, vpcC, or av1C box not found");
-    }
-
-
-}
-
 // Get the appropriate `description` for a specific track. Assumes that the
 // track is H.264, H.265, VP8, VP9, or AV1.
 function getDescription(track) {
@@ -136,31 +15,16 @@ function getDescription(track) {
 }
 
 
-function getAudioSpecificConfig(file) {
-    // TODO: make sure this is coming from the right track.
-
-    /*
-    // 0x04 is the DecoderConfigDescrTag. Assuming MP4Box always puts this at position 0.
-    console.assert(file.moov.traks[0].mdia.minf.stbl.stsd.entries[0].esds.esd.descs[0].tag == 0x04);
-    // 0x40 is the Audio OTI, per table 5 of ISO 14496-1
-    console.assert(file.moov.traks[0].mdia.minf.stbl.stsd.entries[0].esds.esd.descs[0].oti == 0x40);
-    // 0x05 is the DecSpecificInfoTag
-    console.assert(file.moov.traks[0].mdia.minf.stbl.stsd.entries[0].esds.esd.descs[0].descs[0].tag == 0x05);
-     */
-
-    return file.moov.traks[0].mdia.minf.stbl.stsd.entries[0].esds.esd.descs[0].descs[0].data;
-}
-
-
 async function start(data) {
     const videoSamples = [];
     const audioSamples = [];
-    const fileUrl = data.file;
+    const fileRef = data.file;
     const videoWriter = data.videoWriter.getWriter();
     const audioWriter = data.audioWriter.getWriter();
     let offset = 0;
     let rendering = false;
 
+    console.log("starting worker", data);
 
     // decoder setup
     const videoDecoder = new VideoDecoder({
@@ -217,8 +81,14 @@ async function start(data) {
     }
 
     function renderAudioLoop() {
-        if(audioSamples.length === 1000)
+        /*
+        // debugging to help inspect a sample
+        if(audioSamples.length === 1000){
+            const sample = audioSamples[0];
             console.log("audioSamples", audioSamples[0]);
+            console.log("audio duration: " +  1000 * sample.duration / sample.timescale);
+        }
+         */
 
         if (audioSamples.length > 0) {
             const duration = decodeAudioSample(audioSamples.shift());
@@ -268,7 +138,7 @@ async function start(data) {
 
         // Audio
         const audioTrackInfo = info.audioTracks[0];
-        const audioTrack = fs.getTrackById(audioTrackInfo.id);
+        // const audioTrack = fs.getTrackById(audioTrackInfo.id);
         const audioConfig = {
             codec: audioTrackInfo.codec,
             sampleRate: audioTrackInfo.audio.sample_rate,
@@ -282,6 +152,27 @@ async function start(data) {
 
 
     }
+
+    // Wait until we have a queue of both audio and video samples before rendering
+    // ToDo: Assumes there is both audio and video tracks otherwise it will never play
+    function render() {
+        if(rendering){
+            // console.log("already rendering");
+            return;
+        }
+        // start rendering once there is a queue of samples
+        else if (videoSamples.length > 100 && audioSamples.length > 100) {
+            console.log("starting rendering");
+            rendering = true;
+            renderAudioLoop();  // this is about ~1 second behind the video
+            renderVideoLoop();
+        }
+        else {
+            // console.log("not enough samples to start rendering");
+            setTimeout(render, 1000);
+        }
+    }
+
     fs.onSamples = async (trackId, ref, samples) => {
         console.log(`loaded ${samples.length} samples from track ${trackId}`);
         if (trackId === 1) {
@@ -289,20 +180,29 @@ async function start(data) {
         } else if (trackId === 2) {
             audioSamples.push(...samples);
         }
-
-        // start rendering once there is a queue of samples
-        if (!rendering && videoSamples.length > 0 && audioSamples.length > 0) {
-            rendering = true;
-            renderVideoLoop();
-            renderAudioLoop();
-        }
+        render();
     }
 
     fs.start();
 
-    // load the file into mp4box as a stream
-    const file = await fetch(fileUrl);
-    await file.body.pipeTo(new WritableStream(fs, {highWaterMark: 2}));
+    // load the file into mp4box
+    if(typeof fileRef === "string"){
+        // load the file into mp4box as a stream
+        const fileContents = await fetch(fileRef);
+        await fileContents.body.pipeTo(new WritableStream(fs, {highWaterMark: 2}));
+    }
+    else{
+        const arrayBuffer = await fileRef.arrayBuffer();
+        // Convert the ArrayBuffer to a stream for processing
+        const fileContents = new ReadableStream({
+            start(controller) {
+                controller.enqueue(new Uint8Array(arrayBuffer));
+                controller.close();
+            }
+        });
+        await fileContents.pipeTo(new WritableStream(fs, {highWaterMark: 2}));
+    }
+
 
 }
 

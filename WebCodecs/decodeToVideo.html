@@ -11,13 +11,13 @@
     </style>
 </head>
 <body>
-<button>Start</button>
+<button>Play Big Buck Bunny</button>
+<input type="file" id="videoFile" accept="video/*">
 <br/>
 <video autoplay playsinline controls></video>
 <script type="module">
-    const startButton = document.querySelector("button");
-    // const file = `../bbb_video_avc_frag.mp4`;
-    const file = '../BigBuckBunny_360p30.mp4';
+    const bbbButton = document.querySelector("button");
+    const fileButton = document.querySelector("input");
     const video = document.querySelector('video');
 
     const videoTrackGenerator = new MediaStreamTrackGenerator({ kind: 'video' });
@@ -26,7 +26,10 @@
     const stream = new MediaStream([videoTrackGenerator, audioTrackGenerator]);
     video.srcObject = stream;
 
-    function start(){
+    function start(file){
+        bbbButton.disabled = true;
+        fileButton.disabled = true;
+
         const worker = new Worker("./worker.js");
 
         const videoWriter = videoTrackGenerator.writable;
@@ -35,7 +38,8 @@
         worker.postMessage({file, videoWriter, audioWriter}, [videoWriter, audioWriter]);
     }
 
-    startButton.onclick = ()=> start();
+    bbbButton.onclick = ()=> start('../BigBuckBunny_360p30.mp4');
+    fileButton.onchange = ()=> start(fileButton.files[0]);
 
 </script>
 </body>
