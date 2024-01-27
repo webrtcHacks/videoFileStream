@@ -7,10 +7,47 @@
         body {
             background-color: #333;
             color: #fff;
+            font-size: large;
         }
+
+        a {
+            color: #0099ff; /* Light blue */
+        }
+
+        a:hover {
+            color: #00ccff; /* Slightly lighter blue */
+        }
+
+        ul, p {
+            margin-top: 6px;
+            margin-bottom: 6px;
+        }
+
     </style>
 </head>
 <body>
+<p>
+    Proof of concept that loads a video file and uses WebCodecs to convert it to a
+    <code><a href="https://www.w3.org/TR/mediacapture-streams/#mediastream">MediaStream</a></code> where it can be set as a
+    VideoElement <code>srcObject</code> or sent to a WebRTC <code>RTCPeerConnection</code>
+</p>
+    Notes:
+    <ul>
+        <li><a href="https://github.com/gpac/mp4box.js">mp4box.js</a> is used for demuxing.</li>
+        <li>Doesn't include a buffer management system to keep audio & video in sync</li>
+        <li>Only works if the source file contains a single audio and video track</li>
+    </ul>
+</p>
+<p>
+    See <a href="https://webrtcHacks.com">webrtcHacks</a> for more details and commentary.
+</p>
+<p>
+    Heavily inspired by the <a href="https://github.com/w3c/webcodecs">W3C WebCodecs</a> work and their <a
+        href="https://w3c.github.io/webcodecs/samples/audio-video-player/audio_video_player.html">Audio and Video Player
+    sample</a>.
+    Video "<a href="https://peach.blender.org/">Big Buck Bunny</a>" by Blender Foundation, used under <a
+        href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>.
+</p>
 <button>Play Big Buck Bunny</button>
 <input type="file" id="videoFile" accept="video/*">
 <br/>
@@ -21,13 +58,13 @@
     const video = document.querySelector('video');
 
     // Assumes file has both audio and video tracks
-    const videoTrackGenerator = new MediaStreamTrackGenerator({ kind: 'video' });
-    const audioTrackGenerator = new MediaStreamTrackGenerator({ kind: 'audio' });
+    const videoTrackGenerator = new MediaStreamTrackGenerator({kind: 'video'});
+    const audioTrackGenerator = new MediaStreamTrackGenerator({kind: 'audio'});
 
     const stream = new MediaStream([videoTrackGenerator, audioTrackGenerator]);
     video.srcObject = stream;
 
-    function start(file){
+    function start(file) {
         bbbButton.disabled = true;
         fileButton.disabled = true;
 
@@ -39,8 +76,10 @@
         worker.postMessage({file, videoWriter, audioWriter}, [videoWriter, audioWriter]);
     }
 
-    bbbButton.onclick = ()=> start('../BigBuckBunny_360p30.mp4');
-    fileButton.onchange = ()=> start(fileButton.files[0]);
+    const videoUrl = '../BigBuckBunny_360p30.mp4';
+    // const videoUrl = "https://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4"; // works
+    bbbButton.onclick = () => start(videoUrl);
+    fileButton.onchange = () => start(fileButton.files[0]);
 
 </script>
 </body>

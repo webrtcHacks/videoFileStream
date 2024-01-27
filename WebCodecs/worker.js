@@ -1,4 +1,4 @@
-importScripts("demuxer_mp4.js");
+importScripts("https://gpac.github.io/mp4box.js/dist/mp4box.all.js");  // mp4box.js - https://github.com/gpac/mp4box.js
 
 // Get the appropriate `description` for a specific track. Assumes that the
 // track is H.264, H.265, VP8, VP9, or AV1.
@@ -69,7 +69,7 @@ async function start(data) {
 
 
     // Decode and loop, waiting for each sample's duration before decoding the next.
-    // NOTE: at 1000 samples/second, the audio one has a hard time keeping up
+    // NOTE: the audio one has a hard time keeping up
     function renderVideoLoop() {
         if (videoSamples.length > 0) {
             const duration = decodeVideoSample(videoSamples.shift());
