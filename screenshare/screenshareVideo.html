@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Screenshare a video file</title>
+</head>
+<body>
+<input type="file" id="videoFile" accept="video/*">Load and play</input>
+<button disabled>Capture</button>
+<h4>Simulated stream</h4>
+<video autoplay muted></video>
+<br>
+<span></span>
+<script type="module">
+    const fileChooser = document.getElementById('videoFile');
+    const button = document.querySelector('button');
+    const videoElement = document.querySelector('video');
+    const span = document.querySelector('span');
+    let videoUrl = null;
+    let newTab = null;
+
+    videoElement.onplay = () => {
+        span.innerHTML = `Stream video settings: ${JSON.stringify(videoElement.srcObject.getVideoTracks()[0].getSettings())}<br>`;
+        span.innerHTML += `Stream audio settings: ${JSON.stringify(videoElement.srcObject.getAudioTracks()[0].getSettings())}`;
+    };
+
+
+    fileChooser.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) {
+            return;
+        }
+        videoUrl = URL.createObjectURL(file);
+        console.log(file);
+        button.disabled = false;
+
+        setTimeout(() => {
+            // Open the video file in a new tab
+            // const newTab = window.open(videoUrl, '_blank', 'popup=yes, scrollbars=no, width=640, height=360');
+            newTab = window.open('videoPlayer.html#' + encodeURIComponent(videoUrl), '_blank',  'popup=yes, scrollbars=no width=640, height=417');
+
+        }, 1000);
+    });
+
+
+        button.onclick = async  ()=> {
+        if (!videoUrl) {
+            alert("Please select a video file first.");
+            return;
+        }
+        // Check if the new tab was blocked by the browser
+        if (!newTab) {
+            alert('failed to open tab');
+            return;
+        }
+
+        try {
+            // Request the user to select the tab to share
+            const stream = await navigator.mediaDevices.getDisplayMedia({
+                video: true,
+                audio: true,
+                monitorTypeSurfaces: "exclude",
+                preferCurrentTab: false,
+            });
+            window.stream = stream;
+            console.log(stream);
+
+            videoElement.srcObject = stream;
+
+        } catch (error) {
+            console.error('Error accessing display media: ', error);
+        }
+
+
+    }
+
+</script>
+</body>
+</html>
