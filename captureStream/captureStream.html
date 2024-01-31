@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stream from Offscreen Canvas</title>
+    <style>
+        div#results {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+<button id="start">Start</button>
+<div id="results">
+    <div>
+        <h3>Input video</h3>
+        <video id="source" src="../BigBuckBunny_360p30.mp4" controls autoplay playsinline></video>
+    </div>
+    <div>
+        <h3>MediaStream output</h3>
+        <video id="output" controls autoplay playsinline></video>
+    </div>
+</div>
+<br>
+<button id="hide">Hide source</button>
+<button id="mute">Mute local video</button>
+<button id="duck">Duck local video</button>
+
+<script>
+    // Main Thread Script
+    document.addEventListener("DOMContentLoaded", () => {
+        const sourceVideo = document.getElementById("source");
+        const outputVideo = document.getElementById("output");
+
+
+        sourceVideo.onplay = () => {
+            startButton.disabled = true;
+
+            // Combine video stream with audio stream
+            const videoStream = sourceVideo.captureStream();
+            outputVideo.srcObject = videoStream;
+
+        };
+
+        const hideButton = document.querySelector('button#hide');
+        hideButton.onclick = () => {
+            sourceVideo.style.visibility = sourceVideo.style.visibility === "hidden" ? "visible" : "hidden"
+            hideButton.innerText = sourceVideo.hidden ? "Unhide source" : "Hide source";
+
+        };
+
+        const muteButton = document.querySelector('button#mute');
+        muteButton.onclick = () => {
+            sourceVideo.muted = !sourceVideo.muted;
+            muteButton.innerText = sourceVideo.muted ? "Unmute local video" : "Mute local video";
+        };
+
+        const duckButton = document.querySelector('button#duck');
+        duckButton.onclick = () => {
+            sourceVideo.volume = sourceVideo.volume === 0.1 ? 1.0 : 0.1;
+            duckButton.innerText = sourceVideo.volume === 0.1 ? "Unduck local video" : "Duck local video";
+        };
+
+        const startButton = document.querySelector('button#start');
+        startButton.onclick = () => {
+            sourceVideo.play();
+        };
+    });
+
+</script>
+</body>
+</html>
