@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Screenshare a video file</title>
+    <style>
+        body {
+            background-color: #333;
+            color: #fff;
+        }
+
+        div.output {
+            display: flex;
+        }
+        video{
+            width: 640px;
+            height: 360px;
+            background-color: black;
+            margin: 5px;
+        }
+        div#notes{
+            max-width: 1200px;
+        }
+    </style>
+</head>
+<body>
+<div id="notes">
+
+<p >
+    Choose a video file. After you select your file, a pop window with a video player will load.
+    Click the Capture to use getDisplayMedia to capture the player and send it over a peer connection.
+    The output of the peerConnection is shown on the RemoteReceiver window.
+</p>
+<p>
+    <code>suppressLocalAudio</code> is used to turn off the audio on the player tab. The user can control the
+    Screenshare Preview to mute the audio locally or lower the volume (duck) to 10%.
+</p>
+    <p>
+    To make sure local audio is acting independent of the remote audio, select a different audio output device on the
+    remote.
+</p>
+</div>
+<br>
+<label for="videoFile">Load a file and open the player</label>
+<input type="file" id="videoFile" accept="video/*">
+<button id="capture" disabled>Capture</button>
+<div class="output">
+    <div>
+        <h3>Screenshare Preview</h3>
+        <br>
+        <video id="screeSharePreview" autoplay></video>
+        <br>
+        <button id="mute" disabled>Mute Local Audio</button>
+        <button id="duck" disabled>Duck Local Audio</button>
+    </div>
+    <div>
+        <h3>Remote Receiver</h3>
+        <label for="audioOutput">Audio Output Device:</label>
+        <select id="audioOutput" disabled></select>
+        <br>
+        <video id="receiver" autoplay></video>
+    </div>
+</div>
+
+<br>
+<span></span>
+<!-- sending peer -->
+<script type="module">
+    const screenSharePreview = document.getElementById('screeSharePreview');
+    const fileChooser = document.getElementById('videoFile');
+    const button = document.querySelector('button#capture');
+    const muteButton = document.querySelector('button#mute');
+    const duckButton = document.querySelector('button#duck');
+    const span = document.querySelector('span');
+    let videoUrl = null;
+    let newTab = null;
+
+
+    // Send the stream using WebRTC's RTCPeerConnection
+    async function sendVideo(stream) {
+        const pc = new RTCPeerConnection();
+        window.pc = pc;
+
+        stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+        pc.onicecandidate = candidate => {
+            const toReceiverEvent = new CustomEvent('candidate', {detail: candidate});
+            document.dispatchEvent(toReceiverEvent);
+        };
+
+        document.addEventListener('candidate', async e => {
+            // console.debug(e.detail);
+            if (e.detail.candidate)
+                await pc.addIceCandidate(e.detail.candidate);
+        });
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        const toReceiverEvent = new CustomEvent('offer', {detail: offer});
+        document.dispatchEvent(toReceiverEvent);
+
+        document.addEventListener('answer', async e => {
+            console.debug(e.detail);
+            await pc.setRemoteDescription(e.detail);
+        });
+    }
+
+    fileChooser.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) {
+            return;
+        }
+        videoUrl = URL.createObjectURL(file);
+        console.log(file);
+        button.disabled = false;
+
+        // race condition where the new window was opening before the file picker closed, which caused an error
+        setTimeout(() => {
+            // Open the video file in a new tab
+            // const newTab = window.open(videoUrl, '_blank', 'popup=yes, scrollbars=no, width=640, height=360');
+            newTab = window.open('videoPlayer.html#' + encodeURIComponent(videoUrl), '_blank', 'popup=yes, scrollbars=no width=640, height=412');
+
+        }, 1000);
+    });
+
+
+    // start screen capture
+    button.onclick = async () => {
+        if (!videoUrl) {
+            alert("Please select a video file first.");
+            return;
+        }
+        // Check if the new tab was blocked by the browser
+        if (!newTab) {
+            alert('failed to open tab');
+            return;
+        }
+
+        try {
+            // Request the user to select the tab to share
+            const stream = await navigator.mediaDevices.getDisplayMedia({
+                video: {
+                    mediaSource: "tab",
+                    frameRate: 30,
+                    width: {ideal: 640},
+                    height: {ideal: 360},
+                    cursor: "never",
+                },
+                audio: {
+                    suppressLocalAudioPlayback: true,
+                    noiseSuppression: false,
+                    echoCancellation: false,
+                    autoGainControl: false,
+                },
+                selfBrowserSurface: "exclude",
+                monitorTypeSurfaces: "exclude",
+                preferCurrentTab: false,
+            });
+            window.stream = stream;
+            console.log(stream);
+
+            screenSharePreview.srcObject = stream;
+
+            // Check the track settings
+            span.innerHTML = `Stream video settings: ${JSON.stringify(stream.getVideoTracks()[0].getSettings())}<br>`;
+            if (stream.getAudioTracks().length > 0)
+                span.innerHTML += `Stream audio settings: ${JSON.stringify(stream.getAudioTracks()[0].getSettings())}`;
+            else
+                span.innerHTML += `😢 stream has no audio`;
+
+
+            // Send it to the remote
+            await sendVideo(stream);
+            muteButton.disabled = false;
+            duckButton.disabled = false;
+
+
+
+        } catch (error) {
+            console.error('Error accessing display media: ', error);
+        }
+    }
+
+
+
+    muteButton.onclick = () => {
+        screenSharePreview.muted = !screenSharePreview.muted;
+        muteButton.innerText = screenSharePreview.muted ? "Unmute local video" : "Mute local video";
+    };
+
+    duckButton.onclick = () => {
+        screenSharePreview.volume = screenSharePreview.volume === 0.1 ? 1.0 : 0.1;
+        duckButton.innerText = screenSharePreview.volume === 0.1 ? "Unduck local video" : "Duck local video";
+    };
+
+</script>
+<!-- RECEIVER  -->
+<script>
+    const receiverVideo = document.querySelector('video#receiver');
+
+    // Enumerate audio output devices and populate the dropdown
+    async function populateAudioOutputDevices() {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
+
+        const audioOutputSelect = document.getElementById('audioOutput');
+        audioOutputSelect.disabled = false;
+        // remove all existing child elements
+        while (audioOutputSelect.firstChild) {
+            audioOutputSelect.removeChild(audioOutputSelect.firstChild);
+        }
+
+        audioOutputDevices.forEach(device => {
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            option.text = device.label || `Device ${audioOutputSelect.length + 1}`;
+            audioOutputSelect.appendChild(option);
+        });
+
+        // Change the audio output device when a new device is selected
+        audioOutputSelect.addEventListener('change', async (event) => {
+            const deviceId = event.target.value;
+            try {
+                await receiverVideo.setSinkId(deviceId);
+                console.log(`Audio output device set to ${deviceId}`);
+            } catch (error) {
+                console.error('Failed to set audio output device:', error);
+            }
+        });
+    }
+
+    receiverVideo.onplaying = async () => {
+        console.log("video playing stream:", receiverVideo.srcObject);
+        await populateAudioOutputDevices();
+
+    }
+
+    // Look for an offer event to start the peerConnection and answer
+    document.addEventListener('offer', async e => {
+        console.debug(e.detail);
+
+        const pc = new RTCPeerConnection();
+
+        pc.ontrack = e => {
+            console.debug(e);
+            const stream = e.streams[0];
+            receiverVideo.srcObject = stream;
+            window.receiveStream = stream;
+        };
+
+        pc.onicecandidate = candidate => {
+            const toReceiverEvent = new CustomEvent('candidate', {detail: candidate});
+            document.dispatchEvent(toReceiverEvent);
+        };
+
+        document.addEventListener('candidate', async e => {
+            console.debug(e.detail);
+            await pc.addIceCandidate(e.detail.candidate);
+        });
+
+
+        await pc.setRemoteDescription(e.detail);
+
+        window.receiverPc = pc;
+
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        const toSenderEvent = new CustomEvent('answer', {detail: answer});
+        document.dispatchEvent(toSenderEvent);
+    });
+
+
+</script>
+</body>
+</html>

@@ -2,15 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Video Player</title>
+    <title>Video Player: 👉PICK ME👈</title>
     <style>
-        body, video {
-            background-color: #333;
-            color: #fff;
+        body {
+            background-color: deeppink;     /* make the non-video area stand out */
             margin: 0;
             padding: 0;
+            overflow: hidden;
         }
         video {
+            margin: 0;
+            padding: 0;
             width: fit-content;
             height: fit-content;
         }
@@ -24,12 +26,20 @@
 
         videoPlayer.oncanplay = () => {
             // randomize start time - I am sick of watching the same segments over and over
-            videoPlayer.currentTime = Math.floor(Math.random() * 60 * 10);
+            videoPlayer.currentTime = Math.floor(Math.random() * videoPlayer.duration);
             videoPlayer.play();
             videoPlayer.oncanplay = null;
+
         };
 
         videoPlayer.src = decodeURIComponent(window.location.hash.substring(1));
+    };
+
+    window.onresize = () => {
+        console.log(`window resized to ${window.innerWidth}x${window.innerHeight}`);
+        // const videoPlayer = document.getElementById('videoPlayer');
+        // videoPlayer.style.width = '100%';
+        // videoPlayer.style.height = '100%';
     };
 </script>
 </body>
