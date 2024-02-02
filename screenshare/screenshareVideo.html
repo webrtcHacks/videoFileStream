@@ -3,12 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <title>Screenshare a video file</title>
+    <style>
+        body {
+            background-color: #333;
+            color: #fff;
+        }
+    </style>
 </head>
 <body>
 <input type="file" id="videoFile" accept="video/*">Load and play</input>
 <button disabled>Capture</button>
 <h4>Simulated stream</h4>
-<video autoplay muted></video>
+<video autoplay></video>
 <br>
 <span></span>
 <script type="module">
@@ -21,7 +27,12 @@
 
     videoElement.onplay = () => {
         span.innerHTML = `Stream video settings: ${JSON.stringify(videoElement.srcObject.getVideoTracks()[0].getSettings())}<br>`;
-        span.innerHTML += `Stream audio settings: ${JSON.stringify(videoElement.srcObject.getAudioTracks()[0].getSettings())}`;
+        if(videoElement.srcObject.getAudioTracks().length > 0)
+            span.innerHTML += `Stream audio settings: ${JSON.stringify(videoElement.srcObject.getAudioTracks()[0].getSettings())}`;
+        else
+            span.innerHTML += `😢 stream has no audio`;
+        videoElement.width = videoElement.videoWidth;
+        videoElement.height = videoElement.videoHeight;
     };
 
 
@@ -34,6 +45,7 @@
         console.log(file);
         button.disabled = false;
 
+        // race condition where the new window was opening before the file picker closed, which caused an error
         setTimeout(() => {
             // Open the video file in a new tab
             // const newTab = window.open(videoUrl, '_blank', 'popup=yes, scrollbars=no, width=640, height=360');
@@ -57,10 +69,20 @@
         try {
             // Request the user to select the tab to share
             const stream = await navigator.mediaDevices.getDisplayMedia({
-                video: true,
-                audio: true,
+                video: {
+                    mediaSource: "tab",
+                    frameRate: 30,
+                    width: {ideal: 640},
+                    height: {ideal: 360},
+                    cursor: "never",
+                },
+                audio: {
+                    suppressLocalAudioPlayback: true,
+                },
+                selfBrowserSurface: "exclude",
                 monitorTypeSurfaces: "exclude",
                 preferCurrentTab: false,
+                // cursor: "never",
             });
             window.stream = stream;
             console.log(stream);
@@ -70,8 +92,6 @@
         } catch (error) {
             console.error('Error accessing display media: ', error);
         }
-
-
     }
 
 </script>

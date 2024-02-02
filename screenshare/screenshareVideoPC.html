@@ -50,6 +50,7 @@
         <br>
         <video id="screeSharePreview" autoplay></video>
         <br>
+        <button id="hide" disabled>Hide preview</button>
         <button id="mute" disabled>Mute Local Audio</button>
         <button id="duck" disabled>Duck Local Audio</button>
     </div>
@@ -69,6 +70,7 @@
     const screenSharePreview = document.getElementById('screeSharePreview');
     const fileChooser = document.getElementById('videoFile');
     const button = document.querySelector('button#capture');
+    const hideButton = document.querySelector('button#hide');
     const muteButton = document.querySelector('button#mute');
     const duckButton = document.querySelector('button#duck');
     const span = document.querySelector('span');
@@ -172,6 +174,7 @@
 
             // Send it to the remote
             await sendVideo(stream);
+            hideButton.disabled = false;
             muteButton.disabled = false;
             duckButton.disabled = false;
 
@@ -182,7 +185,10 @@
         }
     }
 
-
+    hideButton.onclick = () => {
+        screenSharePreview.hidden = !screenSharePreview.hidden;
+        hideButton.innerText = screenSharePreview.hidden ? "Show preview" : "Hide preview";
+    };
 
     muteButton.onclick = () => {
         screenSharePreview.muted = !screenSharePreview.muted;
