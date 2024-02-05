@@ -76,7 +76,7 @@
         worker.postMessage({file, videoWriter, audioWriter}, [videoWriter, audioWriter]);
     }
 
-    const videoUrl = '../BigBuckBunny_360p30.mp4';
+    const videoUrl = '../media/BigBuckBunny_360p30.mp4';
     // const videoUrl = "https://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4"; // works
     bbbButton.onclick = () => start(videoUrl);
     fileButton.onchange = () => start(fileButton.files[0]);
