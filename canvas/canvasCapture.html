@@ -1,0 +1,172 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Video to MediaStream using Canvas.captureStream and WebAudio</title>
+    <style>
+        body {
+            background-color: #333;
+            color: #fff;
+        }
+
+        div#results {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+<span>Press start if the video does not play automatically: </span>
+<button id="start">Start</button>
+<div id="results">
+    <div>
+        <h3>Input video</h3>
+        <span>Sound plays to the default audio output</span>
+        <br>
+        <video id="source" src="../media/BigBuckBunny_360p30.mp4" controls autoplay playsinline></video>
+    </div>
+    <div>
+        <h3>MediaStream output</h3>
+        <label for="audioOutput">Audio Output Device:</label>
+        <select id="audioOutput" disabled></select>
+        <br>
+        <video id="output" controls autoplay playsinline></video>
+    </div>
+</div>
+<br>
+<button id="hide">Hide source</button>
+<button id="mute" disabled>Mute local video</button>
+<script>
+    // Main Thread Script
+
+    const sourceVideo = document.getElementById("source");
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const audioCtx = new AudioContext();
+    window.audioCtx = audioCtx;
+
+    const startButton = document.querySelector('button#start');
+    const hideButton = document.querySelector('button#hide');
+    const muteButton = document.querySelector('button#mute');
+
+    // randomize start time - I am sick of watching the same segments over and over
+    sourceVideo.oncanplay = () => {
+        sourceVideo.currentTime = Math.floor(Math.random() * sourceVideo.duration);
+        sourceVideo.oncanplay = null;
+    };
+
+    sourceVideo.onplay = () => {
+
+
+        canvas.width = sourceVideo.videoWidth;
+        canvas.height = sourceVideo.videoHeight;
+        requestAnimationFrame(processFrame);
+
+        // Web Audio API to capture audio from the source video
+        const sourceNode = audioCtx.createMediaElementSource(sourceVideo);
+        const destinationNode = audioCtx.createMediaStreamDestination();
+
+        // check if audioCtx object contains sinkId property and a setSinkId method
+        if (typeof audioCtx?.sinkId === 'string' && typeof audioCtx?.setSinkId === 'function')
+            muteButton.disabled = false;
+        else
+            console.warn('This browser does not sinkId and/or setSinkId');
+
+
+        // attempt to lower the volume on the input but increase it on the output
+        // const gainNode = audioCtx.createGain(); // Create a gain node
+
+        sourceNode.connect(destinationNode);
+        sourceNode.connect(audioCtx.destination); // Connect to speakers to play audio
+
+        // Combine video stream with audio stream
+        const videoStream = canvas.captureStream();
+        const audioStream = destinationNode.stream;
+        const combinedStream = new MediaStream([...videoStream.getVideoTracks(), ...audioStream.getAudioTracks()]);
+
+        // another attempt to control local audio independent of what is sent - this doesn't work
+        // const newAudioTrack = audioStream.getAudioTracks()[0].clone();
+        // const combinedStream = new MediaStream([...videoStream.getVideoTracks(), newAudioTrack]);
+
+        window.stream = combinedStream;
+        window.postMessage({message: "stream"}, "*");
+
+    };
+
+    function processFrame() {
+        if (sourceVideo.paused || sourceVideo.ended) return;
+        ctx.drawImage(sourceVideo, 0, 0);
+        requestAnimationFrame(processFrame);
+    }
+
+    hideButton.onclick = () => {
+        sourceVideo.style.visibility = sourceVideo.style.visibility === "hidden" ? "visible" : "hidden"
+        hideButton.innerText = sourceVideo.hidden ? "Unhide source" : "Hide source";
+    };
+
+    muteButton.onclick = async () => {
+        try {
+            if (audioCtx.sinkId === '') {
+                await audioCtx?.setSinkId({type: "none"});
+                muteButton.innerText = "Unmute local video"
+            } else {
+                await audioCtx?.setSinkId('');
+                muteButton.innerText = "Mute local video";
+            }
+        } catch (err) {
+            console.error("Failed to suspend audio", err);
+        }
+    };
+
+    startButton.onclick = () => {
+        sourceVideo.play();
+    };
+</script>
+<!-- Simulated reciever end of a peerConnection -->
+<script type="module">
+    const receiverVideo = document.getElementById("output");
+    // outputVideo.srcObject = window.stream;
+
+    // Enumerate audio output devices and populate the dropdown
+    async function populateAudioOutputDevices() {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
+
+        const audioOutputSelect = document.getElementById('audioOutput');
+        audioOutputSelect.disabled = false;
+        // remove all existing child elements
+        while (audioOutputSelect.firstChild) {
+            audioOutputSelect.removeChild(audioOutputSelect.firstChild);
+        }
+
+        audioOutputDevices.forEach(device => {
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            option.text = device.label || `Device ${audioOutputSelect.length + 1}`;
+            audioOutputSelect.appendChild(option);
+        });
+
+        // Change the audio output device when a new device is selected
+        audioOutputSelect.addEventListener('change', async (event) => {
+            const deviceId = event.target.value;
+            try {
+                await receiverVideo.setSinkId(deviceId);
+                console.log(`Audio output device set to ${deviceId}`);
+            } catch (error) {
+                console.error('Failed to set audio output device:', error);
+            }
+        });
+    }
+
+    populateAudioOutputDevices();
+
+    window.onmessage = async (event) => {
+        if (event.data.message === "stream") {
+            console.log("starting simulated remote video");
+            receiverVideo.srcObject = window.stream;
+
+        }
+    }
+
+
+</script>
+</body>
+</html>

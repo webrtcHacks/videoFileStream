@@ -31,6 +31,7 @@
     <code><a href="https://www.w3.org/TR/mediacapture-streams/#mediastream">MediaStream</a></code> where it can be set as a
     VideoElement <code>srcObject</code> or sent to a WebRTC <code>RTCPeerConnection</code>
 </p>
+<p>
     Notes:
     <ul>
         <li><a href="https://github.com/gpac/mp4box.js">mp4box.js</a> is used for demuxing.</li>
@@ -76,7 +77,7 @@
         worker.postMessage({file, videoWriter, audioWriter}, [videoWriter, audioWriter]);
     }
 
-    const videoUrl = '../BigBuckBunny_360p30.mp4';
+    const videoUrl = '../media/BigBuckBunny_360p30.mp4';
     // const videoUrl = "https://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4"; // works
     bbbButton.onclick = () => start(videoUrl);
     fileButton.onchange = () => start(fileButton.files[0]);
