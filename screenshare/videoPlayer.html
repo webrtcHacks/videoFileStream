@@ -16,10 +16,16 @@
             width: fit-content;
             height: fit-content;
         }
+        span{
+            display: flex;
+            margin-top: 10px;
+            justify-content: center;
+        }
     </style>
 </head>
 <body>
 <video id="videoPlayer" controls loop></video>
+<span>Click capture in the original tab and this space will disappear once you share this window</span>
 <script>
     window.onload = () => {
         const videoPlayer = document.getElementById('videoPlayer');

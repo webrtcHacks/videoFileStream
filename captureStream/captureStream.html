@@ -4,17 +4,26 @@
     <meta charset="UTF-8">
     <title>Stream from Offscreen Canvas</title>
     <style>
+        body {
+            background-color: #333;
+            color: #fff;
+        }
         div#results {
             display: flex;
         }
     </style>
 </head>
 <body>
+<p>
+    This example uses the <code>captureStream</code> method to capture the video and audio directly from a <code>video</code> element.
+    The audio is captured using the Web Audio API and combined with the video stream to create a <code>MediaStream</code>.
+</p>
+<span>Press start if the video does not play automatically: </span>
 <button id="start">Start</button>
 <div id="results">
     <div>
         <h3>Input video</h3>
-        <video id="source" src="../media/BigBuckBunny_360p30.mp4" controls autoplay playsinline></video>
+        <video id="source" src="../media/BigBuckBunny_360p30.mp4" controls autoplay playsinline loop></video>
     </div>
     <div>
         <h3>MediaStream output</h3>
@@ -28,12 +37,14 @@
 
 <script>
     // Main Thread Script
+    const startButton = document.querySelector('button#start');
+
     document.addEventListener("DOMContentLoaded", () => {
         const sourceVideo = document.getElementById("source");
         const outputVideo = document.getElementById("output");
 
 
-        sourceVideo.onplay = () => {
+        sourceVideo.onplaying = () => {
             startButton.disabled = true;
 
             // Combine video stream with audio stream
@@ -61,7 +72,6 @@
             duckButton.innerText = sourceVideo.volume === 0.1 ? "Unduck local video" : "Duck local video";
         };
 
-        const startButton = document.querySelector('button#start');
         startButton.onclick = () => {
             sourceVideo.play();
         };

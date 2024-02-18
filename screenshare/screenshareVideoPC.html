@@ -25,28 +25,36 @@
 </head>
 <body>
 <div id="notes">
-
-<p >
-    Choose a video file. After you select your file, a pop window with a video player will load.
-    Click the Capture to use getDisplayMedia to capture the player and send it over a peer connection.
-    The output of the peerConnection is shown on the RemoteReceiver window.
-</p>
-<p>
-    <code>suppressLocalAudio</code> is used to turn off the audio on the player tab. The user can control the
-    Screenshare Preview to mute the audio locally or lower the volume (duck) to 10%.
-</p>
+    <p >
+        Choose a video file. After you select your file, a pop window with a video player will load.
+        Click the Capture to use getDisplayMedia to capture the player and send it over a peer connection.
+        The output of the peerConnection is shown on the RemoteReceiver window.
+    </p>
     <p>
-    To make sure local audio is acting independent of the remote audio, select a different audio output device on the
-    remote.
-</p>
+        <code>suppressLocalAudio</code> is used to turn off the audio on the player tab. The user can control the
+        Screenshare Preview to mute the audio locally or lower the volume (duck) to 10%.
+    </p>
+        <p>
+        To make sure local audio is acting independent of the remote audio, select a different audio output device on the
+        remote.
+    </p>
 </div>
-<br>
-<label for="videoFile">Load a file and open the player</label>
-<input type="file" id="videoFile" accept="video/*">
-<button id="capture" disabled>Capture</button>
+<div>
+    <p>
+        <span>1. </span>
+        <button id="bbb">Play Video</button>
+        <label for="videoFile">or load your own video file and open the player</label>
+        <input type="file" id="videoFile" accept="video/*">
+    </p>
+    <p>
+        <span>2. </span>
+        <button id="capture" disabled>Capture</button>
+
+    </p>
+</div>
 <div class="output">
     <div>
-        <h3>Screenshare Preview</h3>
+        <h3>Screen Share Preview</h3>
         <br>
         <video id="screeSharePreview" autoplay></video>
         <br>
@@ -69,7 +77,8 @@
 <script type="module">
     const screenSharePreview = document.getElementById('screeSharePreview');
     const fileChooser = document.getElementById('videoFile');
-    const button = document.querySelector('button#capture');
+    const bbbBtn = document.getElementById('bbb');
+    const captureBtn = document.querySelector('button#capture');
     const hideButton = document.querySelector('button#hide');
     const muteButton = document.querySelector('button#mute');
     const duckButton = document.querySelector('button#duck');
@@ -108,6 +117,17 @@
         });
     }
 
+    // play the Big Buck Bunny video
+    bbbBtn.onclick = () => {
+        videoUrl = '../media/BigBuckBunny_360p30.mp4';
+        bbbBtn.disabled = true;
+        captureBtn.disabled = false;
+        fileChooser.disabled = true;
+        newTab = window.open('videoPlayer.html#' + encodeURIComponent(videoUrl), '_blank', 'popup=yes, scrollbars=no, width=640, height=412');
+    }
+
+
+    // let the user choose any video file (html above will accept only video files)
     fileChooser.addEventListener('change', async (event) => {
         const file = event.target.files[0];
         if (!file) {
@@ -115,7 +135,7 @@
         }
         videoUrl = URL.createObjectURL(file);
         console.log(file);
-        button.disabled = false;
+        captureBtn.disabled = false;
 
         // race condition where the new window was opening before the file picker closed, which caused an error
         setTimeout(() => {
@@ -128,7 +148,7 @@
 
 
     // start screen capture
-    button.onclick = async () => {
+    captureBtn.onclick = async () => {
         if (!videoUrl) {
             alert("Please select a video file first.");
             return;
@@ -143,21 +163,20 @@
             // Request the user to select the tab to share
             const stream = await navigator.mediaDevices.getDisplayMedia({
                 video: {
-                    mediaSource: "tab",
-                    frameRate: 30,
-                    width: {ideal: 640},
-                    height: {ideal: 360},
-                    cursor: "never",
+                    mediaSource: "tab",             // this doesn't make a difference
+                    width: {ideal: 640},            // set to the size of the hosted video
+                    height: {ideal: 360},           // set to the size of the hosted video
+                    cursor: "never",                // this doesn't work
                 },
                 audio: {
-                    suppressLocalAudioPlayback: true,
+                    suppressLocalAudioPlayback: true,   // works on chromium
                     noiseSuppression: false,
                     echoCancellation: false,
                     autoGainControl: false,
                 },
-                selfBrowserSurface: "exclude",
-                monitorTypeSurfaces: "exclude",
-                preferCurrentTab: false,
+                selfBrowserSurface: "exclude",      // works on chromium
+                monitorTypeSurfaces: "exclude",     // works on chromium
+                preferCurrentTab: false,            // default
             });
             window.stream = stream;
             console.log(stream);
@@ -171,19 +190,18 @@
             else
                 span.innerHTML += `😢 stream has no audio`;
 
-
             // Send it to the remote
             await sendVideo(stream);
             hideButton.disabled = false;
             muteButton.disabled = false;
             duckButton.disabled = false;
 
-
-
         } catch (error) {
             console.error('Error accessing display media: ', error);
         }
     }
+
+    // Local video controls
 
     hideButton.onclick = () => {
         screenSharePreview.hidden = !screenSharePreview.hidden;
