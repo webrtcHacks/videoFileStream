@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MediaElement CaptureStream with WebAudio</title>
+    <style>
+        body {
+            background-color: #333;
+            color: #fff;
+        }
+        div#results {
+            display: flex;
+        }
+        .audioDevices {
+            display: none
+        }
+    </style>
+</head>
+<body>
+<p>
+    This example uses the <code>captureStream</code> method to capture only video from a <code>video</code> element.
+    The audio is captured using the Web Audio API and combined with the video stream to create a <code>MediaStream</code>.
+</p>
+<span>Press start if the video does not play automatically: </span>
+<button id="start">Start</button>
+<div id="results">
+    <div>
+        <h3>Input video</h3>
+        <span>Sound plays to the default audio output</span>
+        <br>
+        <video id="source" src="../media/BigBuckBunny_360p30.mp4" controls autoplay playsinline></video>
+    </div>
+    <div>
+        <h3>MediaStream output</h3>
+        <label for="audioOutput" class="audioDevices">Audio Output Device:</label>
+        <select id="audioOutput" class="audioDevices"></select>
+        <br>
+        <video id="output" controls autoplay playsinline></video>
+    </div>
+</div>
+<br>
+<button id="hide">Hide source</button>
+<button id="mute">Mute local video</button>
+<button id="sink" disabled>Audio sink to none</button>
+<button id="duck">Duck local video</button>
+
+<script>
+    // Main Thread Script
+    const sourceVideo = document.getElementById("source");
+    const startButton = document.querySelector('button#start');
+
+    const hideButton = document.querySelector('button#hide');
+    const muteButton = document.querySelector('button#mute');
+    const sinkButton = document.querySelector('button#sink');
+    const duckButton = document.querySelector('button#duck');
+
+    let audioCtx;
+
+    document.addEventListener("DOMContentLoaded", () => {
+
+
+        sourceVideo.onplaying = () => {
+            audioCtx = new AudioContext();  // for Firefox
+            startButton.disabled = true;
+
+            // Combine video stream with audio stream
+            const capturedStream = sourceVideo.captureStream ? sourceVideo.captureStream() : sourceVideo.mozCaptureStream();        // this has audio and video
+            console.log(capturedStream.getTracks());
+
+
+            // Web Audio API to control local audio output
+            const sourceNode = audioCtx.createMediaElementSource(sourceVideo);
+            const destinationNode = audioCtx.createMediaStreamDestination();
+
+            // check if audioCtx object contains sinkId property and a setSinkId method
+            if (typeof audioCtx?.sinkId === 'string' && typeof audioCtx?.setSinkId === 'function')
+                sinkButton.disabled = false;
+            else
+                console.warn('This browser does not support sinkId and/or setSinkId');
+
+            sourceNode.connect(destinationNode);
+            sourceNode.connect(audioCtx.destination); // Connect to speakers to play audio
+
+
+            // Web Audio API to capture audio from the source - this doesn't help with local audio mute and level control
+            /* const audioStream = destinationNode.stream;
+            const [audioTrack] = audioStream.getAudioTracks();
+            const [videoTrack] = capturedStream.getVideoTracks();
+            window.stream = new MediaStream([videoTrack, audioTrack]);
+             */
+
+            window.stream = capturedStream;
+            window.postMessage({message: "stream"}, "*");
+
+        };
+
+        hideButton.onclick = () => {
+            sourceVideo.style.visibility = sourceVideo.style.visibility === "hidden" ? "visible" : "hidden"
+            hideButton.innerText = "Hide source" ? "Unhide source" : "Hide source";
+        };
+
+
+        muteButton.onclick = async () => {
+            sourceVideo.muted = !sourceVideo.muted;
+            muteButton.innerText = sourceVideo.muted ? "Unmute local video" : "Mute local video";
+        };
+
+        sinkButton.onclick = async () => {
+            try {
+                if (audioCtx.sinkId === '') {
+                    await audioCtx?.setSinkId({type: "none"});
+                    sinkButton.innerText = "Reset audio sink"
+                } else {
+                    await audioCtx?.setSinkId('');
+                    sinkButton.innerText = "Audio sink to none";
+                }
+            } catch (err) {
+                console.error("Failed to suspend audio", err);
+            }
+        };
+
+        duckButton.onclick = () => {
+            sourceVideo.volume = sourceVideo.volume === 0.1 ? 1.0 : 0.1;
+            duckButton.innerText = sourceVideo.volume === 0.1 ? "Unduck local video" : "Duck local video";
+        };
+
+        startButton.onclick = () => {
+            sourceVideo.play();
+            audioCtx = new AudioContext();  // needed for Firefox
+        };
+    });
+
+</script>
+<!-- Simulated receiver end of a peerConnection -->
+<script type="module">
+    const receiverVideo = document.getElementById("output");
+    const audioOutputSelect = document.getElementById('audioOutput');
+
+    // Enumerate audio output devices and populate the dropdown
+    async function populateAudioOutputDevices() {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
+        if(audioOutputDevices.length === 0)
+            console.warn('No audio output devices returned');
+        else{
+            audioOutputSelect.disabled = false;
+            document.querySelectorAll('.audioDevices').forEach(item => item.style.display = 'inline');
+        }
+
+        // remove all existing child elements
+        while (audioOutputSelect.firstChild) {
+            audioOutputSelect.removeChild(audioOutputSelect.firstChild);
+        }
+
+        audioOutputDevices.forEach(device => {
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            option.text = device.label || `Device ${audioOutputSelect.length + 1}`;
+            audioOutputSelect.appendChild(option);
+        });
+
+        // Change the audio output device when a new device is selected
+        audioOutputSelect.addEventListener('change', async (event) => {
+            const deviceId = event.target.value;
+            try {
+                await receiverVideo.setSinkId(deviceId);
+                console.log(`Audio output device set to ${deviceId}`);
+            } catch (error) {
+                console.error('Failed to set audio output device:', error);
+            }
+        });
+    }
+
+    populateAudioOutputDevices();
+
+    window.onmessage = async (event) => {
+        if (event.data.message === "stream") {
+            console.log("starting simulated remote video");
+            receiverVideo.srcObject = window.stream;
+
+        }
+    }
+
+
+</script>
+</body>
+</html>

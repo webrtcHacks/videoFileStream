@@ -14,6 +14,10 @@
     </style>
 </head>
 <body>
+<p>
+    This example uses the <code>canvas.captureStream</code> method to capture the video from a <code>video</code> element.
+The audio is captured using the Web Audio API and combined with the video stream to create a <code>MediaStream</code>.
+</p>
 <span>Press start if the video does not play automatically: </span>
 <button id="start">Start</button>
 <div id="results">
@@ -55,6 +59,7 @@
 
     sourceVideo.onplay = () => {
 
+        startButton.disabled = true;
 
         canvas.width = sourceVideo.videoWidth;
         canvas.height = sourceVideo.videoHeight;
@@ -120,7 +125,7 @@
         sourceVideo.play();
     };
 </script>
-<!-- Simulated reciever end of a peerConnection -->
+<!-- Simulated receiver end of a peerConnection -->
 <script type="module">
     const receiverVideo = document.getElementById("output");
     // outputVideo.srcObject = window.stream;
