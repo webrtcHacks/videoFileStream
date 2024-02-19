@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Client-side Examples on the ways to send a video file over WebRTC</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<p>
+    Examples of how to convert a video file to a <code>MediaStream</code> where it can be sent via WebRTC.
+    See <a href="https://webrtcHacks.com">webrtcHacks</a> for full details and commentary.
+</p>
+<ul>
+    <li>
+        <a href="screenshare/screenshareVideoPC.html">getDisplayMedia of pop-out video file</a> - load a video file into a pop-up
+        and use the <code>getDisplayMedia</code> for capture.
+    </li>
+    <li>
+        <a href="captureStream/captureStream.html">VideoElement Capture Stream</a> - capture the video and audio directly from a
+        <code>video</code> element. The audio is captured using the Web Audio API and combined with the video stream
+        to create a <code>MediaStream</code>.
+    </li>
+    <li>
+        <a href="captureStream/captureStreamWebAudio.html">VideoElement Capture Stream with WebAudio</a> - same as above, but experimenting
+        with using WebAudio for local audio control.
+    </li>
+    <li>
+        <a href="canvas/canvasCapture.html">Canvas Capture + Web Audio</a> - write a source video to a canvas and then use
+        <code>canvas.captureStream()</code> to capture the video with Web Audio API to capture the audio.
+    </li>
+    <li>
+        <a href="WebCodecs/decodeToVideo.html">WebCodecs</a> - load a video file and use WebCodecs to convert it to a MediaStream
+    </li>
+
+</ul>
+</body>
+</html>

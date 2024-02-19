@@ -1,0 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu+Mono&display=swap');
+
+body {
+    background-color: #333;
+    color: #fff;
+    font-size: 20px;
+    font-family: 'Ubuntu', sans-serif;
+    max-width: 1200px;
+}
+
+a {
+    color: #0099ff; /* Light blue */
+    font-weight: bold;
+}
+
+a:hover {
+    color: #00ccff; /* Slightly lighter blue */
+    font-weight: unset;
+}
+
+ul, li {
+    margin-top: 6px;
+    margin-bottom: 6px;
+}
+code {
+    font-family: 'Ubuntu Mono', monospace;
+    color: #dddddd;
+}
