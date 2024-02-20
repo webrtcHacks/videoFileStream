@@ -4,16 +4,26 @@
     <meta charset="UTF-8">
     <title>Client-side Examples on the ways to send a video file over WebRTC</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        li {
+            margin-bottom: 24px;
+        }
+    </style>
 </head>
 <body>
 <p>
     Examples of how to convert a video file to a <code>MediaStream</code> where it can be sent via WebRTC.
-    See the <a href="https://webrtchacks.com/all-the-ways-to-…file-over-webrtc)">webrtcHacks post</a> for full details, commentary, and comparisons.
+    See the <a href="https://webrtchacks.com/all-the-ways-to-…file-over-webrtc">webrtcHacks post</a> for full details, commentary, and comparisons.
 </p>
 <ul>
     <li>
         <a href="screenshare/screenshareVideoPC.html">getDisplayMedia of pop-out video file</a> - load a video file into a pop-up
         and use the <code>getDisplayMedia</code> for capture.
+    </li>
+    <li>
+        <a href="screenshare/elementCapture.html">getDisplayMedia of an in-page video player</a> -
+        play the video file using <code>preferOwnTab</code> constraint is used limit the screen share picker with <code>RestrictionTarget</code>
+        to limit capture to only the source Video.
     </li>
     <li>
         <a href="captureStream/captureStream.html">VideoElement Capture Stream</a> - capture the video and audio directly from a
